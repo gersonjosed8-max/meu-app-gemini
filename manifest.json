@@ -1,0 +1,15 @@
+{
+  "short_name": "GERGER Bible",
+  "name": "GERGER.GE – Bible Translator",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a"
+}
