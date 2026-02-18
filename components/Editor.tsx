@@ -127,6 +127,15 @@ export const Editor: React.FC<EditorProps> = ({ userRole, onBackToPanel }) => {
   return (
     <div className={`h-full flex flex-col overflow-hidden transition-all duration-700 ${isDarkMode ? 'bg-[#050505]' : 'bg-[#f1f5f9]'}`}>
       
+      {/* EXPORT MODAL OVERLAY */}
+      {showSaveAs && (
+        <SaveAsModule 
+          onClose={() => setShowSaveAs(false)} 
+          kotiText={kotiText} 
+          chapter={chapter} 
+        />
+      )}
+
       {/* PROFESSIONAL MULTI-TOGGLE HEADER */}
       <div className={`shrink-0 border-b z-50 shadow-2xl ${isDarkMode ? 'bg-black border-zinc-900' : 'bg-white border-zinc-200'}`}>
         <div className={`h-11 border-b flex items-center px-8 justify-between ${isDarkMode ? 'bg-[#0a0a0b] border-zinc-900' : 'bg-blue-600 text-white'}`}>
@@ -170,7 +179,12 @@ export const Editor: React.FC<EditorProps> = ({ userRole, onBackToPanel }) => {
               <select value={chapter} onChange={e => setChapter(Number(e.target.value))} className="bg-zinc-900 hover:bg-zinc-800 text-white font-black text-xs px-6 h-10 rounded-xl outline-none shadow-xl transition-colors cursor-pointer border border-zinc-800">
                  {Array.from({length: 150}, (_, i) => <option key={i+1} value={i+1}>Salmo {i+1}</option>)}
               </select>
-              <button onClick={() => setShowSaveAs(true)} className={`px-6 h-10 rounded-xl font-black text-[9px] uppercase shadow-xl transition-all ${isDarkMode ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-white border border-zinc-200 text-zinc-900 hover:bg-blue-600 hover:text-white'}`}>Exportar</button>
+              <button 
+                onClick={() => setShowSaveAs(true)} 
+                className={`px-6 h-10 rounded-xl font-black text-[9px] uppercase shadow-xl transition-all ${isDarkMode ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-white border border-zinc-200 text-zinc-900 hover:bg-blue-600 hover:text-white'}`}
+              >
+                Exportar
+              </button>
               <button onClick={() => setShowProfSuite(!showProfSuite)} className={`p-2.5 rounded-xl transition-all ${showProfSuite ? 'bg-amber-600 text-white shadow-lg' : 'bg-zinc-800 text-amber-500'}`}>
                 <Settings2 size={18} />
               </button>
@@ -181,18 +195,24 @@ export const Editor: React.FC<EditorProps> = ({ userRole, onBackToPanel }) => {
       {/* ÁREA DE TRABALHO MULTI-PANE */}
       <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
         
-        {/* COLUNA 1: ALMEIDA */}
+        {/* COLUNA 1: ALMEIDA (EDITÁVEL) */}
         {showAlmeida && (
           <>
             <div style={{ width: `${almeidaWidth}px` }} className="flex flex-col shrink-0 p-4 bg-zinc-50 dark:bg-zinc-900/10 border-r border-zinc-800/10 animate-in slide-in-from-left duration-300">
-               <div className={`flex-1 border rounded-[2rem] p-6 overflow-y-auto custom-scrollbar shadow-inner ${isDarkMode ? 'bg-zinc-900/30 border-zinc-800' : 'bg-white border-zinc-200'}`}>
-                  <div className="text-[8px] font-black text-blue-500 uppercase mb-4 tracking-widest flex items-center justify-between border-b border-zinc-800/10 pb-2">
+               <div className={`flex-1 border rounded-[2rem] p-6 overflow-hidden flex flex-col shadow-inner ${isDarkMode ? 'bg-zinc-900/30 border-zinc-800' : 'bg-white border-zinc-200'}`}>
+                  <div className="text-[8px] font-black text-blue-500 uppercase mb-4 tracking-widest flex items-center justify-between border-b border-zinc-800/10 pb-2 shrink-0">
                      <span className="flex items-center gap-2"><Book size={12} /> Almeida</span>
                      <span className="opacity-40">ARA</span>
                   </div>
-                  <div className="text-xs leading-relaxed text-zinc-500 font-medium italic">
-                    <span className="bg-blue-500 text-white font-black px-1 py-0.5 rounded mr-2 text-[9px]">1</span>
-                    {almeidaText}
+                  <div className="flex-1 flex gap-2">
+                    <span className="bg-blue-500 text-white font-black px-1 py-0.5 rounded text-[9px] h-fit shrink-0 mt-1">1</span>
+                    <textarea 
+                      value={almeidaText}
+                      onChange={e => setAlmeidaText(e.target.value)}
+                      className="w-full h-full bg-transparent outline-none resize-none text-xs leading-relaxed text-zinc-500 font-medium italic custom-scrollbar"
+                      spellCheck="false"
+                      placeholder="Referência Almeida..."
+                    />
                   </div>
                </div>
             </div>
@@ -202,18 +222,24 @@ export const Editor: React.FC<EditorProps> = ({ userRole, onBackToPanel }) => {
           </>
         )}
 
-        {/* COLUNA 2: VERSÃO FÁCIL */}
+        {/* COLUNA 2: VERSÃO FÁCIL (EDITÁVEL) */}
         {showEasyRead && (
           <>
             <div style={{ width: `${easyReadWidth}px` }} className="flex flex-col shrink-0 p-4 bg-zinc-50 dark:bg-zinc-900/10 border-r border-zinc-800/10 animate-in fade-in duration-300">
-               <div className={`flex-1 border rounded-[2rem] p-6 overflow-y-auto custom-scrollbar shadow-inner ${isDarkMode ? 'bg-zinc-900/30 border-zinc-800' : 'bg-white border-zinc-200'}`}>
-                  <div className="text-[8px] font-black text-green-500 uppercase mb-4 tracking-widest flex items-center justify-between border-b border-zinc-800/10 pb-2">
+               <div className={`flex-1 border rounded-[2rem] p-6 overflow-hidden flex flex-col shadow-inner ${isDarkMode ? 'bg-zinc-900/30 border-zinc-800' : 'bg-white border-zinc-200'}`}>
+                  <div className="text-[8px] font-black text-green-500 uppercase mb-4 tracking-widest flex items-center justify-between border-b border-zinc-800/10 pb-2 shrink-0">
                      <span className="flex items-center gap-2"><BookOpen size={12} /> Versão Fácil</span>
                      <span className="opacity-40">VFL</span>
                   </div>
-                  <div className="text-xs leading-relaxed text-zinc-500 font-medium italic">
-                    <span className="bg-green-600 text-white font-black px-1 py-0.5 rounded mr-2 text-[9px]">1</span>
-                    {easyReadText}
+                  <div className="flex-1 flex gap-2">
+                    <span className="bg-green-600 text-white font-black px-1 py-0.5 rounded text-[9px] h-fit shrink-0 mt-1">1</span>
+                    <textarea 
+                      value={easyReadText}
+                      onChange={e => setEasyReadText(e.target.value)}
+                      className="w-full h-full bg-transparent outline-none resize-none text-xs leading-relaxed text-zinc-500 font-medium italic custom-scrollbar"
+                      spellCheck="false"
+                      placeholder="Referência Fácil..."
+                    />
                   </div>
                </div>
             </div>
@@ -257,7 +283,7 @@ export const Editor: React.FC<EditorProps> = ({ userRole, onBackToPanel }) => {
             </div>
             <div style={{ width: `${originalWidth}px` }} className="flex flex-col shrink-0 p-4 bg-zinc-50 dark:bg-zinc-900/10 border-l border-zinc-800/10 animate-in slide-in-from-right duration-300">
                <div className={`flex-1 border rounded-[2rem] p-6 overflow-y-auto custom-scrollbar shadow-inner ${isDarkMode ? 'bg-zinc-900/30 border-zinc-800' : 'bg-white border-zinc-200'}`}>
-                  <div className="text-[8px] font-black text-amber-500 uppercase mb-6 tracking-widest flex items-center justify-between border-b border-zinc-800/10 pb-2">
+                  <div className="text-[8px] font-black text-amber-500 uppercase mb-6 tracking-widest flex items-center justify-between border-b border-zinc-800/10 pb-2 shrink-0">
                      <span className="flex items-center gap-2"><AlignLeft size={12} /> HEB INTERLINEAR</span>
                      <button onClick={() => setInterlinearEnabled(!interlinearEnabled)} className={`px-2 py-0.5 rounded text-[7px] border transition-all ${interlinearEnabled ? 'bg-amber-600 text-white border-amber-500' : 'bg-transparent text-zinc-500 border-zinc-800'}`}>GLOSSAS</button>
                   </div>

@@ -1,11 +1,20 @@
 
-import React, { useState } from 'react';
-import { Laptop, Download, ChevronDown, CheckCircle, Save } from 'lucide-react';
+import React from 'react';
+import { 
+  FileText, Download, Printer, FileDown, X, 
+  CheckCircle, Save, FileType, Globe, Share2, 
+  ExternalLink, FileCode, Layout
+} from 'lucide-react';
 import { ExportHistoryItem } from '../types';
 
-export const SaveAsModule: React.FC = () => {
-  const [saveFormat, setSaveFormat] = useState("USFM");
+interface SaveAsModuleProps {
+  onClose: () => void;
+  kotiText: string;
+  chapter: number;
+}
 
+export const SaveAsModule: React.FC<SaveAsModuleProps> = ({ onClose, kotiText, chapter }) => {
+  
   const saveToHistory = (fileName: string, format: string) => {
     const history: ExportHistoryItem[] = JSON.parse(localStorage.getItem('gerger_export_history') || '[]');
     const newItem: ExportHistoryItem = {
@@ -13,113 +22,190 @@ export const SaveAsModule: React.FC = () => {
       fileName,
       format,
       timestamp: Date.now(),
-      chapter: Number(localStorage.getItem('gerger_last_chapter')) || 1,
+      chapter: chapter,
       status: 'SUCCESS'
     };
     localStorage.setItem('gerger_export_history', JSON.stringify([newItem, ...history]));
   };
 
-  const handleSaveAs = async (format: string) => {
-    const chapter = localStorage.getItem('gerger_last_chapter') || "1";
-    const fileName = `Zapuura_Cap${chapter}_${new Date().toISOString().slice(0,10)}.${format.toLowerCase()}`;
-    const kotiText = localStorage.getItem(`gerger_zapuura_${chapter}`) || "Sem conteúdo";
-    const content = `GERGER.GE – Gerson Professional Suite\nProjeto: Zapuura (Ekoti)\nCapítulo: ${chapter}\n\n${kotiText}`;
-
-    if ('showSaveFilePicker' in window) {
-      try {
-        const handle = await (window as any).showSaveFilePicker({
-          suggestedName: fileName,
-          types: [{
-            description: `${format} File`,
-            accept: { 'text/plain': [`.${format.toLowerCase()}`] },
-          }],
-        });
-        const writable = await handle.createWritable();
-        await writable.write(content);
-        await writable.close();
-        saveToHistory(fileName, format);
-        alert("Salvo com sucesso no local selecionado!");
-      } catch (err) {
-        if ((err as Error).name !== 'AbortError') {
-          console.error("Erro ao salvar:", err);
-          fallbackDownload(content, fileName, format);
-        }
-      }
-    } else {
-      fallbackDownload(content, fileName, format);
-    }
-  };
-
-  const fallbackDownload = (content: string, fileName: string, format: string) => {
-    const blob = new Blob([content], { type: 'text/plain' });
+  const handleExportWord = () => {
+    const fileName = `Zapuura_Salmo_${chapter}_${new Date().toISOString().slice(0,10)}.doc`;
+    const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                    <head><meta charset='utf-8'><title>Zapuura Export</title>
+                    <style>body { font-family: 'Times New Roman', serif; }</style></head><body>`;
+    const footer = "</body></html>";
+    const content = `
+      <h1 style="text-align:center; text-transform:uppercase;">Zapuura (Ekoti)</h1>
+      <h2 style="text-align:center;">Salmo ${chapter}</h2>
+      <hr/>
+      <p style="font-size:14pt; line-height:1.5;">
+        <b style="color:#2563eb; margin-right:10px;">1</b> ${kotiText}
+      </p>
+      <p style="font-size:8pt; margin-top:50px; color:#666; font-style:italic; text-align:center;">
+        Gerado via GERGER.GE Professional Suite - Tradutor: Gerson Selemane
+      </p>
+    `;
+    
+    const blob = new Blob([header + content + footer], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = fileName;
-    document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    saveToHistory(fileName, format);
-    alert(`Download iniciado: ${fileName}`);
+    saveToHistory(fileName, 'WORD');
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>GERGER.GE - Salmo ${chapter}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+            body { font-family: 'Inter', sans-serif; padding: 50px; color: #000; line-height: 1.6; }
+            .header { border-bottom: 2px solid #2563eb; margin-bottom: 40px; padding-bottom: 20px; }
+            .title { font-size: 28px; font-weight: 900; font-style: italic; color: #2563eb; margin: 0; }
+            .subtitle { font-size: 10px; font-weight: 800; color: #666; text-transform: uppercase; letter-spacing: 2px; }
+            .chapter-title { font-size: 42px; font-weight: 900; margin: 40px 0; text-align: center; font-style: italic; }
+            .content { font-size: 18px; white-space: pre-wrap; margin-bottom: 60px; }
+            .verse-num { color: #2563eb; font-weight: 900; margin-right: 15px; font-size: 14px; border: 1px solid #2563eb; padding: 2px 6px; borderRadius: 4px; vertical-align: middle; }
+            .footer { border-top: 1px solid #eee; padding-top: 20px; font-size: 9px; text-align: center; color: #999; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 class="title">GERGER.GE</h1>
+            <span class="subtitle">Zapuura Bible Project • Professional Export</span>
+          </div>
+          <h2 class="chapter-title">Salmo ${chapter}</h2>
+          <div class="content">
+            <span class="verse-num">1</span>${kotiText}
+          </div>
+          <div class="footer">
+            Tradução por Gerson Jose Selemane • Sincronizado via Zapuura Core Engine v9.4
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      saveToHistory(`Impressão_Salmo_${chapter}`, 'PDF/PRINT');
+    }, 500);
+  };
+
+  const handleExportUSFM = () => {
+    const content = `\\id PSA Zapuura\n\\c ${chapter}\n\\v 1 ${kotiText}`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Salmo_${chapter}_Zapuura.usfm`;
+    link.click();
+    saveToHistory(`Salmo_${chapter}_Zapuura.usfm`, 'USFM');
   };
 
   return (
-    <div className="bg-zinc-950 p-10 mt-auto shrink-0 animate-in slide-in-from-bottom-4 duration-700 border-t border-zinc-900">
-      <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-blue-900/40">
-            <Save size={28} />
-          </div>
-          <div>
-            <h3 className="text-xl font-black uppercase tracking-widest text-white italic">
-              Gerson Professional Suite
-            </h3>
-            <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.3em]">Módulo de Exportação Direta para o PC</p>
-          </div>
-        </div>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl animate-in fade-in duration-300">
+      <div className="bg-[#0c0c0e] border-2 border-zinc-800 w-full max-w-4xl rounded-[4rem] shadow-[0_0_150px_rgba(37,99,235,0.2)] overflow-hidden relative">
         
-        <div className="flex gap-4 w-full md:w-auto">
-          <div className="relative flex-1 md:flex-none">
-            <select 
-              className="appearance-none w-full bg-zinc-900 border border-zinc-800 text-xs pl-6 pr-12 py-5 rounded-2xl uppercase font-black outline-none focus:border-blue-600 transition-all text-zinc-300 cursor-pointer shadow-inner"
-              value={saveFormat}
-              onChange={(e) => setSaveFormat(e.target.value)}
-            >
-              <option value="USFM">Padrão USFM</option>
-              <option value="TXT">Texto Limpo (.txt)</option>
-              <option value="DOCX">Microsoft Word (.docx)</option>
-            </select>
-            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+        {/* HEADER MODAL */}
+        <div className="p-10 border-b border-zinc-900 bg-zinc-900/20 flex justify-between items-center">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 bg-blue-600 rounded-[2rem] flex items-center justify-center text-white shadow-2xl shadow-blue-900/40">
+              <Layout size={32} />
+            </div>
+            <div>
+              <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase leading-none">Central de Exportação</h2>
+              <p className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.4em] mt-2 italic">Gerson Selemane Professional Suite v9.4</p>
+            </div>
           </div>
-          
-          <button 
-            onClick={() => handleSaveAs(saveFormat)}
-            className="bg-blue-600 hover:bg-blue-500 px-10 py-5 rounded-2xl font-black text-sm uppercase transition-all flex items-center gap-3 shadow-2xl shadow-blue-900/40 active:scale-95 text-white italic tracking-tighter"
-          >
-            <Download size={20} /> Salvar Como...
+          <button onClick={onClose} className="p-4 bg-zinc-800 text-zinc-500 hover:text-white rounded-2xl transition-all">
+            <X size={28} />
           </button>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-          <div className="text-[9px] font-black text-zinc-500 uppercase mb-2 tracking-widest">Segurança de Arquivo</div>
-          <p className="text-xs text-zinc-400 font-medium leading-relaxed italic">
-            O sistema Gerson Professional utiliza a API nativa do explorador para garantir que o arquivo seja gravado exatamente onde você desejar.
-          </p>
+        <div className="p-12 grid grid-cols-1 md:grid-cols-2 gap-12">
+          
+          {/* FORMATOS DE ARQUIVO */}
+          <div className="space-y-6">
+            <h3 className="text-blue-500 font-black text-xs uppercase tracking-[0.4em] mb-6 flex items-center gap-3">
+              <FileType size={16} /> Formatos Digitais
+            </h3>
+            
+            <button 
+              onClick={handleExportWord}
+              className="w-full flex items-center justify-between p-8 bg-zinc-900 border border-zinc-800 rounded-[2.5rem] hover:border-blue-600 hover:bg-blue-600/5 transition-all group"
+            >
+              <div className="flex items-center gap-5 text-left">
+                <div className="p-4 bg-blue-600/10 text-blue-500 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all">
+                  <FileText size={24} />
+                </div>
+                <div>
+                  <span className="text-white font-black uppercase text-sm italic">Microsoft Word</span>
+                  <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-1">Exportação .DOC Editável</p>
+                </div>
+              </div>
+              <Download className="text-zinc-800 group-hover:text-blue-600" size={20} />
+            </button>
+
+            <button 
+              onClick={handleExportUSFM}
+              className="w-full flex items-center justify-between p-8 bg-zinc-900 border border-zinc-800 rounded-[2.5rem] hover:border-amber-600 hover:bg-amber-600/5 transition-all group"
+            >
+              <div className="flex items-center gap-5 text-left">
+                <div className="p-4 bg-amber-600/10 text-amber-500 rounded-2xl group-hover:bg-amber-600 group-hover:text-white transition-all">
+                  <FileCode size={24} />
+                </div>
+                <div>
+                  <span className="text-white font-black uppercase text-sm italic">Padrão USFM</span>
+                  <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-1">Compatível com Paratext</p>
+                </div>
+              </div>
+              <Download className="text-zinc-800 group-hover:text-amber-600" size={20} />
+            </button>
+          </div>
+
+          {/* IMPRESSÃO E PDF */}
+          <div className="space-y-6">
+            <h3 className="text-amber-500 font-black text-xs uppercase tracking-[0.4em] mb-6 flex items-center gap-3">
+              <Printer size={16} /> Documentação Física
+            </h3>
+            
+            <button 
+              onClick={handlePrint}
+              className="w-full flex items-center justify-between p-8 bg-zinc-900 border border-zinc-800 rounded-[2.5rem] hover:border-green-600 hover:bg-green-600/5 transition-all group"
+            >
+              <div className="flex items-center gap-5 text-left">
+                <div className="p-4 bg-green-600/10 text-green-500 rounded-2xl group-hover:bg-green-600 group-hover:text-white transition-all">
+                  <FileDown size={24} />
+                </div>
+                <div>
+                  <span className="text-white font-black uppercase text-sm italic">PDF & Impressão</span>
+                  <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-1">Layout Profissional A4</p>
+                </div>
+              </div>
+              <Printer className="text-zinc-800 group-hover:text-green-600" size={20} />
+            </button>
+
+            <div className="p-8 bg-blue-600/5 border border-blue-600/20 rounded-[2.5rem] flex flex-col items-center text-center space-y-4">
+              <Globe className="text-blue-500" size={32} />
+              <p className="text-zinc-500 text-[11px] font-medium leading-relaxed italic">
+                Gerson, utilize o PDF para distribuir as revisões semanais à equipe de Angoche. O layout foi otimizado para máxima legibilidade.
+              </p>
+            </div>
+          </div>
+
         </div>
-        <div className="bg-blue-900/10 p-6 rounded-2xl border border-blue-900/20 flex items-center justify-center text-center">
-           <div className="flex flex-col items-center">
-             <Laptop className="text-blue-500 mb-2" size={24} />
-             <span className="text-[10px] text-blue-400 font-black uppercase tracking-widest">Sincronização com Computador Local Ativa</span>
-           </div>
+
+        <div className="p-8 bg-black/40 border-t border-zinc-900 flex justify-center items-center gap-4">
+          <CheckCircle size={14} className="text-green-500" />
+          <span className="text-[9px] text-zinc-700 font-black uppercase tracking-[0.5em]">Protocolo de Exportação Validado • Gerson Jose Selemane</span>
         </div>
-      </div>
-      
-      <div className="flex items-center justify-center gap-3 mt-8 text-[9px] text-zinc-700 font-black uppercase tracking-[0.5em]">
-        <CheckCircle size={12} className="text-green-600" />
-        Zapuura Core v9.2 - Protocolo de Gerson Selemane
       </div>
     </div>
   );

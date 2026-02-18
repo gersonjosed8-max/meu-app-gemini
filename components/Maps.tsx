@@ -1,8 +1,8 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   MapPin, ZoomIn, ZoomOut, Layers, ImageIcon, ChevronRight, 
-  X, GripVertical, BookOpen, Map as MapIcon, Maximize2, Globe, Eye
+  X, GripVertical, BookOpen, Map as MapIcon, Maximize2, Globe, Eye, Edit3, Save
 } from 'lucide-react';
 
 interface MapRegion {
@@ -27,26 +27,7 @@ interface MapPoint {
   historicalNote?: string;
 }
 
-const HISTORICAL_REGIONS: MapRegion[] = [
-  { 
-    id: 'egito', 
-    name: 'Antigo Egito', 
-    coords: 'M150,450 Q200,500 250,450 T300,550 L100,550 Z', 
-    color: 'rgba(59, 130, 246, 0.2)', 
-    description: 'A terra do Nilo. Local de cativeiro e da grande libertação narrada por Moisés.',
-    imageUrl: 'https://images.unsplash.com/photo-1503177119275-0aa32b3a9368?auto=format&fit=crop&q=80&w=1200'
-  },
-  { 
-    id: 'canaan', 
-    name: 'Canaã / Judá', 
-    coords: 'M380,300 Q400,280 420,300 T440,350 L360,350 Z', 
-    color: 'rgba(34, 197, 94, 0.2)', 
-    description: 'A Terra Prometida, centro do reinado de Davi e cenário principal dos Salmos.',
-    imageUrl: 'https://images.unsplash.com/photo-1548135039-35d1f044bf69?auto=format&fit=crop&q=80&w=1200'
-  }
-];
-
-const MAP_POINTS: MapPoint[] = [
+const INITIAL_POINTS: MapPoint[] = [
   {
     id: 'jerusalem-siao',
     name: 'Monte Sião (Jerusalém)',
@@ -72,42 +53,6 @@ const MAP_POINTS: MapPoint[] = [
     imageUrl: 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&q=80&w=1200'
   },
   {
-    id: 'hebron',
-    name: 'Hebrom',
-    x: 395,
-    y: 360,
-    color: '#f59e0b',
-    type: 'city',
-    description: 'Cidade onde Davi foi ungido rei sobre Judá e reinou por sete anos.',
-    psalmContext: 'Salmo 18:50: "Ele dá grandes vitórias ao seu rei e usa de benignidade para com o seu ungido, para com Davi."',
-    historicalNote: 'Um dos locais de sepultamento dos patriarcas mais antigos de Israel.',
-    imageUrl: 'https://images.unsplash.com/photo-1444491741275-3747c53c99b4?auto=format&fit=crop&q=80&w=1200'
-  },
-  {
-    id: 'adullam',
-    name: 'Caverna de Adulão',
-    x: 380,
-    y: 340,
-    color: '#a78bfa',
-    type: 'cave',
-    description: 'Esconderijo estratégico onde Davi reuniu seu exército de "homens em aperto".',
-    psalmContext: 'Salmo 142 (Título): "Oração de Davi quando estava na caverna."',
-    historicalNote: 'Reflete o isolamento e a dependência total de Davi em Deus durante as provações.',
-    imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=1200'
-  },
-  {
-    id: 'rio-jordao',
-    name: 'Rio Jordão',
-    x: 435,
-    y: 310,
-    color: '#3b82f6',
-    type: 'nature',
-    description: 'O rio sagrado, fronteira espiritual e palco de milagres de travessia.',
-    psalmContext: 'Salmo 42:6: "Lembro-me de ti desde a terra do Jordão, e desde os montes de Hermom."',
-    historicalNote: 'Suas águas simbolizam transição e renovação teológica.',
-    imageUrl: 'https://images.unsplash.com/photo-1552554602-998dfc381710?auto=format&fit=crop&q=80&w=1200'
-  },
-  {
     id: 'monte-hermom',
     name: 'Monte Hermom',
     x: 440,
@@ -121,15 +66,31 @@ const MAP_POINTS: MapPoint[] = [
   }
 ];
 
-type MapLayer = 'political' | 'topographic' | 'points';
-
 export const Maps: React.FC = () => {
   const [zoom, setZoom] = useState(1);
-  const [selectedData, setSelectedData] = useState<MapPoint | MapRegion | null>(null);
-  const [activeLayer, setActiveLayer] = useState<MapLayer>('points');
+  const [activeLayer, setActiveLayer] = useState<'political' | 'topographic' | 'points'>('points');
   const [splitWidth, setSplitWidth] = useState(60); 
   const [fullscreenImg, setFullscreenImg] = useState<string | null>(null);
   const isResizing = useRef(false);
+
+  // Editable Content State
+  const [points, setPoints] = useState<MapPoint[]>(() => {
+    const saved = localStorage.getItem('gerger_map_points');
+    return saved ? JSON.parse(saved) : INITIAL_POINTS;
+  });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isEditingContext, setIsEditingContext] = useState(false);
+
+  const selectedData = points.find(p => p.id === selectedId);
+
+  useEffect(() => {
+    localStorage.setItem('gerger_map_points', JSON.stringify(points));
+  }, [points]);
+
+  const updateSelectedPoint = (field: keyof MapPoint, value: string) => {
+    if (!selectedId) return;
+    setPoints(points.map(p => p.id === selectedId ? { ...p, [field]: value } : p));
+  };
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isResizing.current) return;
@@ -148,23 +109,6 @@ export const Maps: React.FC = () => {
   return (
     <div id="maps-container" className="h-full flex flex-col bg-[#050505] relative overflow-hidden animate-in fade-in duration-1000 select-none font-sans">
       
-      {/* LIGHTBOX DE IMAGENS */}
-      {fullscreenImg && (
-        <div 
-          className="fixed inset-0 z-[999] bg-black/98 flex items-center justify-center p-4 backdrop-blur-3xl animate-in zoom-in-95 duration-500"
-          onClick={() => setFullscreenImg(null)}
-        >
-          <button className="absolute top-10 right-10 p-4 bg-white/10 hover:bg-red-500 rounded-full text-white transition-all shadow-2xl">
-            <X size={32} />
-          </button>
-          <img 
-            src={fullscreenImg} 
-            alt="Localização Bíblica" 
-            className="max-w-[95vw] max-h-[95vh] object-contain rounded-3xl shadow-[0_0_150px_rgba(37,99,235,0.4)] border border-white/10" 
-          />
-        </div>
-      )}
-
       {/* HEADER DO MAPA */}
       <div className="h-20 bg-zinc-950 border-b border-zinc-900 px-10 flex items-center justify-between z-50 shrink-0 shadow-2xl">
         <div className="flex items-center gap-4">
@@ -190,135 +134,89 @@ export const Maps: React.FC = () => {
       </div>
 
       <div className="flex-1 flex overflow-hidden relative">
-        {/* VIEWPORT DO MAPA (SVG) */}
-        <div 
-          className="relative bg-black flex items-center justify-center overflow-hidden border-r border-zinc-900"
-          style={{ width: `${splitWidth}%` }}
-        >
-          {activeLayer === 'topographic' && (
-             <div className="absolute inset-0 opacity-5 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/topography.png')]"></div>
-          )}
-
-          <div 
-            className="relative transition-transform duration-700 ease-out cursor-grab active:cursor-grabbing" 
-            style={{ transform: `scale(${zoom})` }}
-          >
-            <svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-2xl">
+        <div className="relative bg-black flex items-center justify-center overflow-hidden border-r border-zinc-900" style={{ width: `${splitWidth}%` }}>
+          <div className="relative transition-transform duration-700 ease-out" style={{ transform: `scale(${zoom})` }}>
+            <svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" className="drop-shadow-2xl">
               <rect width="1200" height="800" fill="#030303" />
-              <path 
-                d="M100,700 L200,600 L350,550 L400,400 L420,200 L600,100 L900,150 L1100,300 L1150,600 L1000,750 Z" 
-                fill={activeLayer === 'political' ? '#0a0a0b' : '#050505'} 
-                stroke="#1e293b" 
-                strokeWidth="2" 
-              />
-              
-              {MAP_POINTS.map(point => {
-                const isSelected = selectedData?.id === point.id;
-                return (
-                  <g 
-                    key={point.id} 
-                    className="cursor-pointer transition-all duration-300 hover:opacity-100"
-                    onClick={() => setSelectedData(point)}
-                  >
-                    <circle 
-                      cx={point.x} 
-                      cy={point.y} 
-                      r={isSelected ? 12 : 8} 
-                      fill={point.color} 
-                      className={isSelected ? "animate-pulse" : ""} 
-                    />
-                    <text 
-                      x={point.x + 15} 
-                      y={point.y + 5} 
-                      fill={isSelected ? point.color : '#4b5563'} 
-                      className={`text-[12px] font-black uppercase tracking-tighter italic transition-colors`}
-                    >
-                      {point.name}
-                    </text>
-                  </g>
-                );
-              })}
+              <path d="M100,700 L200,600 L350,550 L400,400 L420,200 L600,100 L900,150 L1100,300 L1150,600 L1000,750 Z" fill={activeLayer === 'political' ? '#0a0a0b' : '#050505'} stroke="#1e293b" strokeWidth="2" />
+              {points.map(point => (
+                <g key={point.id} className="cursor-pointer" onClick={() => setSelectedId(point.id)}>
+                  <circle cx={point.x} cy={point.y} r={selectedId === point.id ? 12 : 8} fill={point.color} className={selectedId === point.id ? "animate-pulse" : ""} />
+                  <text x={point.x + 15} y={point.y + 5} fill={selectedId === point.id ? point.color : '#4b5563'} className="text-[12px] font-black uppercase italic tracking-tighter">
+                    {point.name}
+                  </text>
+                </g>
+              ))}
             </svg>
           </div>
         </div>
 
-        {/* DIVISOR DE REDIMENSIONAMENTO */}
-        <div 
-          onMouseDown={() => { isResizing.current = true; document.addEventListener('mousemove', handleMouseMove); document.addEventListener('mouseup', handleMouseUp); }}
-          className="w-1.5 bg-zinc-900 hover:bg-blue-600 cursor-col-resize flex items-center justify-center transition-colors group relative z-50"
-        >
-          <div className="h-10 w-full flex items-center justify-center text-zinc-700 group-hover:text-white">
-            <GripVertical size={16} />
-          </div>
+        <div onMouseDown={() => { isResizing.current = true; document.addEventListener('mousemove', handleMouseMove); document.addEventListener('mouseup', handleMouseUp); }} className="w-1.5 bg-zinc-900 hover:bg-blue-600 cursor-col-resize flex items-center justify-center transition-colors group relative z-50">
+          <GripVertical size={16} className="text-zinc-700 group-hover:text-white" />
         </div>
 
-        {/* PAINEL DE DETALHES CONTEXTUAIS */}
-        <div 
-          className="bg-zinc-950 flex flex-col overflow-y-auto custom-scrollbar p-10"
-          style={{ width: `${100 - splitWidth}%` }}
-        >
+        <div className="bg-zinc-950 flex flex-col overflow-y-auto custom-scrollbar p-10" style={{ width: `${100 - splitWidth}%` }}>
           {selectedData ? (
             <div className="animate-in slide-in-from-right duration-500 space-y-10">
-              <button 
-                onClick={() => setSelectedData(null)}
-                className="flex items-center gap-2 text-zinc-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
-              >
-                <ChevronRight size={14} className="rotate-180" /> Fechar Detalhes
-              </button>
+              <div className="flex justify-between items-center">
+                <button onClick={() => {setSelectedId(null); setIsEditingContext(false);}} className="text-zinc-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                  <ChevronRight size={14} className="rotate-180" /> Fechar
+                </button>
+                <button onClick={() => setIsEditingContext(!isEditingContext)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${isEditingContext ? 'bg-amber-600 text-white' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}>
+                  {isEditingContext ? <Save size={14} /> : <Edit3 size={14} />} {isEditingContext ? 'Salvar' : 'Editar'}
+                </button>
+              </div>
               
               <div className="aspect-video w-full rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 relative group cursor-zoom-in" onClick={() => setFullscreenImg(selectedData.imageUrl)}>
                 <img src={selectedData.imageUrl} alt={selectedData.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 to-transparent"></div>
-                <div className="absolute bottom-6 right-6 p-3 bg-black/60 backdrop-blur-md rounded-2xl text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Maximize2 size={20} />
-                </div>
               </div>
 
               <div className="space-y-8">
                 <div>
-                  <h3 className="text-5xl font-black text-white italic tracking-tighter uppercase mb-4 leading-none">{selectedData.name}</h3>
+                  {isEditingContext ? (
+                    <input value={selectedData.name} onChange={e => updateSelectedPoint('name', e.target.value)} className="bg-transparent text-5xl font-black text-white italic tracking-tighter uppercase mb-4 leading-none outline-none border-b border-blue-600 w-full" />
+                  ) : (
+                    <h3 className="text-5xl font-black text-white italic tracking-tighter uppercase mb-4 leading-none">{selectedData.name}</h3>
+                  )}
                   <div className="h-1.5 w-20 bg-blue-600 rounded-full"></div>
                 </div>
 
-                <div className="bg-zinc-900/50 p-8 rounded-[2.5rem] border border-zinc-800 italic text-zinc-400 text-base leading-relaxed font-medium shadow-inner">
-                  {selectedData.description}
+                {isEditingContext ? (
+                  <textarea value={selectedData.description} onChange={e => updateSelectedPoint('description', e.target.value)} className="w-full bg-zinc-900 p-8 rounded-[2.5rem] italic text-zinc-400 text-base leading-relaxed font-medium outline-none border border-amber-600/30 h-40 resize-none" />
+                ) : (
+                  <div className="bg-zinc-900/50 p-8 rounded-[2.5rem] border border-zinc-800 italic text-zinc-400 text-base leading-relaxed font-medium shadow-inner">
+                    {selectedData.description}
+                  </div>
+                )}
+
+                <div className="bg-blue-600/10 p-8 rounded-[2.5rem] border border-blue-600/20 shadow-lg">
+                  <BookOpen size={28} className="text-blue-500 mb-6" />
+                  {isEditingContext ? (
+                    <textarea value={selectedData.psalmContext} onChange={e => updateSelectedPoint('psalmContext', e.target.value)} className="w-full bg-transparent text-white font-black text-xl italic leading-relaxed tracking-tight outline-none h-24 resize-none border-b border-blue-500/30" />
+                  ) : (
+                    <p className="text-white font-black text-xl italic leading-relaxed tracking-tight">"{selectedData.psalmContext}"</p>
+                  )}
                 </div>
 
-                {(selectedData as MapPoint).psalmContext && (
-                  <div className="bg-blue-600/10 p-8 rounded-[2.5rem] border border-blue-600/20 shadow-lg">
-                    <BookOpen size={28} className="text-blue-500 mb-6" />
-                    <p className="text-white font-black text-xl italic leading-relaxed tracking-tight">
-                      "{(selectedData as MapPoint).psalmContext}"
-                    </p>
-                  </div>
-                )}
-
-                {(selectedData as MapPoint).historicalNote && (
-                  <div className="bg-zinc-900 p-8 rounded-[2rem] border border-zinc-800 border-l-4 border-l-amber-600">
-                    <h4 className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-3 italic">Arqueologia Bíblica</h4>
-                    <p className="text-zinc-400 text-sm italic leading-relaxed">{(selectedData as MapPoint).historicalNote}</p>
-                  </div>
-                )}
+                <div className="bg-zinc-900 p-8 rounded-[2rem] border border-zinc-800 border-l-4 border-l-amber-600">
+                  <h4 className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-3 italic">Arqueologia Bíblica</h4>
+                  {isEditingContext ? (
+                    <textarea value={selectedData.historicalNote} onChange={e => updateSelectedPoint('historicalNote', e.target.value)} className="w-full bg-transparent text-zinc-400 text-sm italic leading-relaxed outline-none h-24 resize-none" />
+                  ) : (
+                    <p className="text-zinc-400 text-sm italic leading-relaxed">{selectedData.historicalNote}</p>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center p-10 text-center opacity-30 group grayscale hover:grayscale-0 transition-all duration-700">
-              <div className="w-32 h-32 bg-zinc-900 rounded-[3rem] flex items-center justify-center text-zinc-700 mb-8 border border-zinc-800 shadow-2xl group-hover:rotate-6 transition-transform">
-                <ImageIcon size={64} />
-              </div>
-              <h4 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-4">Galeria Contextual Zapuura</h4>
-              <p className="text-zinc-600 text-[11px] font-black uppercase tracking-widest max-w-xs leading-relaxed">
-                Clique nos pontos pulsantes do mapa para visualizar imagens arqueológicas e referências específicas aos Salmos.
-              </p>
+              <Globe size={64} className="mb-8 text-zinc-700" />
+              <h4 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-4">Galeria Contextual</h4>
+              <p className="text-zinc-600 text-[11px] font-black uppercase tracking-widest max-w-xs leading-relaxed">Selecione um ponto arqueológico no mapa para visualizar e editar seu contexto histórico.</p>
             </div>
           )}
         </div>
       </div>
-
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 20px; }
-      `}</style>
     </div>
   );
 };
