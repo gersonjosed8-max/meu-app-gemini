@@ -1,0 +1,8 @@
+{
+  "name": "GERGER – Bible Translator",
+  "description": "Professional-grade Bible translation suite designed for the Zapuura project in Ekoti. Features multi-pane editing, USFM support, and administrative control by Gerson Selemane.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
